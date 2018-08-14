@@ -46,8 +46,9 @@ proc getFb2Info {filename} {
                     }] " "
                 }] " "
             }]
+            set title [[lindex [$titleInfo selectNodes -namespace [list l $namespace] //l:book-title] 0] asText]
 
-            return [dict create code ok data [dict create authors $authors genres $genres]]
+            return [dict create code ok data [dict create authors $authors genres $genres title $title]]
         }
 
         default {
@@ -80,7 +81,8 @@ if {$argc == 1} {
                     file mkdir $dir
                 }
                 set otherAuthors [lassign $authors firstAuthor]
-                if {![catch {file rename $filename [file join $::bookDir $firstAuthor]}]} {
+                set newBookname "[dict get $fb2 data title].fb2.zip"
+                if {![catch {file rename $filename [file join $::bookDir $firstAuthor $newBookname]}]} {
                     if {[llength $otherAuthors] > 0} {
                         set bookFilename [file tail $filename]
                         foreach author $otherAuthors {
