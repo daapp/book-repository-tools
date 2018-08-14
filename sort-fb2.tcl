@@ -10,6 +10,16 @@ package require fileutil
 
 set bookDir [file join $env(HOME) Books]
 
+proc lfilter {list script} {
+    set res [list]
+    foreach e $list {
+        if {[uplevel 1 $script [list $e]]} {
+            lappend res $e
+        }
+    }
+    return $res
+}
+
 proc getFb2Info {filename} {
     set xml [fileutil::cat $filename]
     set doc [dom parse $xml]
@@ -57,7 +67,9 @@ if {$argc == 1} {
             set fb2 [getFb2Info [lindex $files 0]]
             puts "Parse FB2 info: [dict get $fb2 code]"
             if {[dict get $fb2 code] eq "ok"} {
-                set authors [lmap a [dict get $fb2 data authors] {string map {" " _} $a}]
+                set authors [lmap a [dict get $fb2 data authors] {
+                    string map {" " _} [lfilter $a [list apply {{v} {expr {$v ne ""}}}]]
+                }]
                 foreach author $authors {
                     set dir [file join $::bookDir $author]
                     puts "Create directory: $dir"
@@ -65,9 +77,11 @@ if {$argc == 1} {
                 }
                 set otherAuthors [lassign $authors firstAuthor]
                 file rename $filename [file join $::bookDir $firstAuthor]
-                set bookFilename [file tail $filename]
-                foreach author $otherAuthors {
-                    file link [file join $bookDir $author $bookFilename] [file join $bookDir $firstAuthor $bookFilename]
+                if {[llength $otherAuthors] > 0} {
+                    set bookFilename [file tail $filename]
+                    foreach author $otherAuthors {
+                        file link [file join $bookDir $author $bookFilename] [file join $bookDir $firstAuthor $bookFilename]
+                    }
                 }
             } else {
                 puts stderr "Error parsing $filename: [dict get $fb2 data]"
