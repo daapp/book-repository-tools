@@ -86,7 +86,7 @@ if {$argc == 1} {
                     if {[llength $otherAuthors] > 0} {
                         set bookFilename [file tail $filename]
                         foreach author $otherAuthors {
-                            file link [file join $bookDir $author $bookFilename] [file join $bookDir $firstAuthor $bookFilename]
+                            file link [file join $bookDir $author $newBookname] [file join $bookDir $firstAuthor $newBookname]
                         }
                     }
                 } else {
