@@ -20,6 +20,10 @@ proc lfilter {list script} {
     return $res
 }
 
+proc notEmpty {v} {
+    return [expr {$v ne ""}]
+}
+
 proc getFb2Info {filename} {
     set xml [fileutil::cat $filename]
     set doc [dom parse $xml]
@@ -36,11 +40,11 @@ proc getFb2Info {filename} {
                 $g text
             }]
             set authors [lmap author [$titleInfo selectNodes -namespace [list l $namespace] l:author] {
-                lmap name {last-name first-name middle-name} {
-                    lmap v [$author selectNodes -namespace [list l $namespace] l:$name] {
+                join [lmap name {last-name first-name middle-name} {
+                    join [lmap v [$author selectNodes -namespace [list l $namespace] l:$name] {
                         $v asText
-                    }
-                }
+                    }] " "
+                }] " "
             }]
 
             return [dict create code ok data [dict create authors $authors genres $genres]]
@@ -68,7 +72,7 @@ if {$argc == 1} {
             puts "Parse FB2 info: [dict get $fb2 code]"
             if {[dict get $fb2 code] eq "ok"} {
                 set authors [lmap a [dict get $fb2 data authors] {
-                    string map {" " _} [lfilter $a [list apply {{v} {expr {$v ne ""}}}]]
+                    string map {" " _} [lfilter $a notEmpty]
                 }]
                 foreach author $authors {
                     set dir [file join $::bookDir $author]
@@ -76,15 +80,19 @@ if {$argc == 1} {
                     file mkdir $dir
                 }
                 set otherAuthors [lassign $authors firstAuthor]
-                file rename $filename [file join $::bookDir $firstAuthor]
-                if {[llength $otherAuthors] > 0} {
-                    set bookFilename [file tail $filename]
-                    foreach author $otherAuthors {
-                        file link [file join $bookDir $author $bookFilename] [file join $bookDir $firstAuthor $bookFilename]
+                if {![catch {file rename $filename [file join $::bookDir $firstAuthor]}]} {
+                    if {[llength $otherAuthors] > 0} {
+                        set bookFilename [file tail $filename]
+                        foreach author $otherAuthors {
+                            file link [file join $bookDir $author $bookFilename] [file join $bookDir $firstAuthor $bookFilename]
+                        }
                     }
+                } else {
+                    puts stderr "Error: file \"[file join $::bookDir $firstAuthor [file tail $filename]]\" already exists."
                 }
             } else {
                 puts stderr "Error parsing $filename: [dict get $fb2 data]"
+                exit 1
             }
         }
 
