@@ -71,6 +71,7 @@ if {$argc == 1} {
         1 {
             set fb2 [getFb2Info [lindex $files 0]]
             puts "Parse FB2 info: [dict get $fb2 code]"
+            puts "Book title: [dict get $fb2 data title]"
             if {[dict get $fb2 code] eq "ok"} {
                 set authors [lmap a [dict get $fb2 data authors] {
                     string map {" " _} [lfilter $a notEmpty]
@@ -90,7 +91,7 @@ if {$argc == 1} {
                         }
                     }
                 } else {
-                    puts stderr "Error: file \"[file join $::bookDir $firstAuthor [file tail $filename]]\" already exists."
+                    puts stderr "Error: file \"[file join $::bookDir $firstAuthor [file tail $newBookname]]\" already exists."
                 }
             } else {
                 puts stderr "Error parsing $filename: [dict get $fb2 data]"
