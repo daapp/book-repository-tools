@@ -5,7 +5,6 @@ exec tclsh "$0" ${1+"$@"}
 package require tdom
 package require vfs
 package require vfs::zip
-package require fileutil
 
 
 set bookDir [file join $env(HOME) Books]
@@ -25,7 +24,7 @@ proc notEmpty {v} {
 }
 
 proc getFb2Info {filename} {
-    set xml [fileutil::cat $filename]
+    set xml [tDOM::xmlReadFile $filename]
     set doc [dom parse $xml]
     set root [$doc documentElement root]
     set namespace [$root getAttribute xmlns]
@@ -61,7 +60,8 @@ if {$argc == 1} {
     set src [lindex $argv 0]
     set filename [file tail $src]
     set ext [file extension $filename]
-    if {$src in {.zip}} {
+    set compressed [expr {$src in {.zip}}]
+    if {$compressed} {
 	vfs::zip::Mount $src [file join / $filename]
 	set files [glob -nocomplain -dir [file join / $filename] *.fb2]
     } else {
@@ -87,17 +87,35 @@ if {$argc == 1} {
                     file mkdir $dir
                 }
                 set otherAuthors [lassign $authors firstAuthor]
-                set newBookname "[dict get $fb2 data title].fb2.zip"
-                if {![catch {file rename $filename [file join $::bookDir $firstAuthor $newBookname]}]} {
-                    if {[llength $otherAuthors] > 0} {
-                        set bookFilename [file tail $filename]
-                        foreach author $otherAuthors {
-                            file link [file join $bookDir $author $newBookname] [file join $bookDir $firstAuthor $newBookname]
-                        }
-                    }
-                } else {
-                    puts stderr "Error: file \"[file join $::bookDir $firstAuthor [file tail $newBookname]]\" already exists."
-                }
+		proc linkToOtherAuthors {newBookname otherAuthors destination} {
+		    foreach author $otherAuthors {
+			file link [file join $::bookDir $author $newBookName] $destination
+		    }
+		}
+		if {$compressed} {
+		    set newBookname "[dict get $fb2 data title].fb2.zip"
+		    set destination [file join $bookDir $firstAuthor $newBookname]
+		    if {![catch {file rename $filename $destination}]} {
+			linkToOtherAuthors $newBookname $otherAuthors $destination
+		    } else {
+			puts stderr "Error: file \"[file join $::bookDir $firstAuthor [file tail $newBookname]]\" already exists."
+			exit 1
+		    }
+		} else {
+		    set newBookname "[dict get $fb2 data title].fb2.zip"
+		    set zipFilename [file join $bookDir $firstAuthor $newBookname]
+		    if {[file exists $zipFilename]} {
+			puts stderr "Error: file \"$zipFilename\" already exists."
+			exit 1
+		    } else {
+			if {![catch {exec zip $zipFilename $filename} errorMessage]} {
+			    linkToOtherAuthors $newBookname $otherAuthors $zipFilename
+			} else {
+			    puts stderr "ZIP error: $errorMessage"
+			    exit 1
+			}
+		    }
+		}
             } else {
                 puts stderr "Error parsing $filename: [dict get $fb2 data]"
                 exit 1
