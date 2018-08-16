@@ -1,0 +1,34 @@
+#! /bin/sh
+
+dir=$(mktemp -d)
+echo Extract to $dir
+
+fb2zipname=$1
+fb2dirname=$(dirname $1)
+
+if [ "$fb2dirname" = "." ];
+then
+	fb2dirname=$(pwd)
+fi
+
+unzip -q -d $dir $fb2zipname
+cd $dir && 
+for f in $(ls -1 -- *.fb2)
+do
+	echo $f	
+	if head -n 1 $f | grep -i '"windows-1251"' >/dev/null
+	then
+		echo 1251 ... converting
+		perl -pe 's/"windows-1251"/"utf-8"/i' <$f | iconv -f cp1251 -t utf-8 >$f._ &&
+		mv $f._ $f &&
+		dos2unix $f &&
+		zip $f.zip $f &&
+		mv $f.zip "$fb2dirname"
+	else
+		echo UTF ... skip
+	fi
+done
+
+echo Remove directory $dir
+rm -rf $dir
+
