@@ -60,8 +60,13 @@ proc getFb2Info {filename} {
 if {$argc == 1} {
     set src [lindex $argv 0]
     set filename [file tail $src]
-    vfs::zip::Mount $src [file join / $filename]
-    set files [glob -nocomplain -dir [file join / $filename] *.fb2]
+    set ext [file extension $filename]
+    if {$src in {.zip}} {
+	vfs::zip::Mount $src [file join / $filename]
+	set files [glob -nocomplain -dir [file join / $filename] *.fb2]
+    } else {
+	set files [list $src]
+    }
     switch -- [llength $files] {
         0 {
             puts stderr "Empty zip file"
