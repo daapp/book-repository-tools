@@ -60,7 +60,8 @@ if {$argc == 1} {
     set src [lindex $argv 0]
     set filename [file tail $src]
     set ext [file extension $filename]
-    set compressed [expr {$src in {.zip}}]
+    set compressed [expr {$ext in {.zip}}]
+
     if {$compressed} {
 	vfs::zip::Mount $src [file join / $filename]
 	set files [glob -nocomplain -dir [file join / $filename] *.fb2]
@@ -89,7 +90,7 @@ if {$argc == 1} {
                 set otherAuthors [lassign $authors firstAuthor]
 		proc linkToOtherAuthors {newBookname otherAuthors destination} {
 		    foreach author $otherAuthors {
-			file link [file join $::bookDir $author $newBookName] $destination
+			file link [file join $::bookDir $author $newBookname] $destination
 		    }
 		}
 		if {$compressed} {
@@ -110,6 +111,7 @@ if {$argc == 1} {
 		    } else {
 			if {![catch {exec zip $zipFilename $filename} errorMessage]} {
 			    linkToOtherAuthors $newBookname $otherAuthors $zipFilename
+			    file delete $filename
 			} else {
 			    puts stderr "ZIP error: $errorMessage"
 			    exit 1
