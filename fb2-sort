@@ -41,11 +41,11 @@ proc getFb2Info {filename} {
             set authors [lmap author [$titleInfo selectNodes -namespace [list l $namespace] l:author] {
                 join [lmap name {last-name first-name middle-name} {
                     join [lmap v [$author selectNodes -namespace [list l $namespace] l:$name] {
-                        $v asText
+                        string trim [$v asText]
                     }] " "
                 }] " "
             }]
-            set title [[lindex [$titleInfo selectNodes -namespace [list l $namespace] //l:book-title] 0] asText]
+            set title [string trim [[lindex [$titleInfo selectNodes -namespace [list l $namespace] //l:book-title] 0] asText]]
 
             return [dict create code ok data [dict create authors $authors genres $genres title $title]]
         }
