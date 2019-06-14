@@ -41,7 +41,7 @@ proc getFb2Info {filename} {
             set authors [lmap author [$titleInfo selectNodes -namespace [list l $namespace] l:author] {
                 join [lmap name {last-name first-name middle-name} {
                     join [lmap v [$author selectNodes -namespace [list l $namespace] l:$name] {
-                        string trim [string totitle [$v asText]]
+                        string totitle [string trim [$v asText]]
                     }] " "
                 }] " "
             }]
