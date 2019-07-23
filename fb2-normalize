@@ -1,34 +1,54 @@
 #! /bin/sh
+# \
+exec tclsh "$0" ${1+"$@"}
 
-dir=$(mktemp -d)
-echo Extract to $dir
+package require fileutil
 
-fb2zipname=$1
-fb2dirname=$(dirname $1)
+# path to unzip tool
+set unzip unzip
+set zip zip
 
-if [ "$fb2dirname" = "." ];
-then
-	fb2dirname=$(pwd)
-fi
+proc head {filename} {
+    fileutil::foreachLine l $filename {
+        return $l
+    }
+}
 
-unzip -q -d $dir $fb2zipname
-cd $dir && 
-for f in $(ls -1 -- *.fb2)
-do
-	echo $f	
-	if head -n 1 $f | grep -i '"windows-1251"' >/dev/null
-	then
-		echo 1251 ... converting
-		perl -pe 's/"windows-1251"/"utf-8"/i' <$f | iconv -f cp1251 -t utf-8 >$f._ &&
-		mv $f._ $f &&
-		dos2unix $f &&
-		zip $f.zip $f &&
-		mv $f.zip "$fb2dirname"
-	else
-		echo UTF ... skip
-	fi
-done
+proc convertFile {filename} {
+    puts "1251 .. converting"
+    set data [fileutil::cat -encoding cp1251 $filename]
+    set data [regsub -nocase {encoding=['\"]windows-1251['\"]} $data \
+        {encoding="utf-8"}]
+    fileutil::writeFile -encoding utf-8 $filename $data
+}
 
-echo Remove directory $dir
-rm -rf $dir
+if {[string tolower [file extension [lindex $argv 0]]] eq ".fb2"} {
+    convertFile [lindex $argv 0]
+} else {
+    set dir [fileutil::maketempdir]
+    puts "Extract to $dir"
 
+    set fb2zipname [lindex $argv 0]
+    set fb2dirname [file dirname $fb2zipname]
+
+    if {$fb2dirname eq "."} {
+        set fb2dirname [pwd]
+    }
+
+    puts [exec $unzip -q -d $dir $fb2zipname]
+    cd $dir
+    foreach filename [glob -nocomplain *.fb2] {
+        puts $filename
+
+        if {[regexp -nocase {encoding=['\"]windows-1251['\"]} [head $filename]]} {
+            convertFile $filename
+            puts [exec $zip $filename.zip $filename]
+            file rename $filename.zip $fb2dirname
+        } else {
+            puts "UTF ... skip"
+        }
+    }
+
+    puts "Remove directory $dir"
+    file delete -force -- $dir
+}
